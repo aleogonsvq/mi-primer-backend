@@ -12,3 +12,13 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// Definimos el modelo Producto (se convertirá en una tabla en tu base de datos PostgreSQL)
+model Producto {
+  id        Int      @id @default(autoincrement()) // Clave primaria, cuenta sola: 1, 2, 3...
+  nombre    String
+  precio    Float    // Float permite usar números con decimales
+  createdAt DateTime @default(now()) // Guarda la fecha y hora exacta en la que se creó
+}
+
+

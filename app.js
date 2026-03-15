@@ -1,79 +1,73 @@
 const express = require('express');
+const { PrismaClient } = require('@prisma/client'); // 1. Importamos Prisma
+
 const app = express();
-// AÑADE ESTA LÍNEA: Es un "traductor" para que Express entienda el JSON que le enviaremos
-app.use(express.json());
+const prisma = new PrismaClient(); // 2. Creamos la conexión a la Base de Datos
 const port = 3000;
 
-// 1. Nuestra "Base de datos" temporal (en memoria)
-const productos = [
-  { id: 1, nombre: 'Laptop Gamer', precio: 1200 },
-  { id: 2, nombre: 'Ratón Inalámbrico', precio: 25 },
-  { id: 3, nombre: 'Teclado Mecánico', precio: 85 }
-];
+app.use(express.json());
 
-// 2. Tu ruta original (texto)
-app.get('/', (req, res) => {
-  res.send('¡Hola Mundo! Mi servidor Express está vivo.');
+// --- NUEVAS RUTAS CONECTADAS A LA BASE DE DATOS ---
+
+// 1. LEER todos los productos (GET)
+app.get('/api/productos', async (req, res) => {
+  // findMany() es el equivalente de Prisma a "SELECT * FROM Producto"
+  const productosDB = await prisma.producto.findMany(); 
+  res.json(productosDB);
 });
 
-// 3. NUEVA RUTA: Devolver la lista de productos en formato JSON
-app.get('/api/productos', (req, res) => {
-  // En lugar de res.send, usamos res.json para que Express lo formatee correctamente
-  res.json(productos); 
-});
-
-// NUEVA RUTA: Crear un producto nuevo (POST)
-app.post('/api/productos', (req, res) => {
-  // 1. Capturamos los datos que nos envía el cliente (Postman) en el "cuerpo" de la petición
-  const nuevoProducto = req.body; 
-
-  // 2. Le asignamos un ID automático (simulando lo que haría una base de datos real)
-  nuevoProducto.id = productos.length + 1;
-
-  // 3. Añadimos el nuevo producto a nuestro array
-  productos.push(nuevoProducto);
-
-  // 4. Respondemos con un código 201 (Created) y devolvemos el producto recién creado
+// 2. CREAR un nuevo producto (POST)
+app.post('/api/productos', async (req, res) => {
+  // create() inserta una nueva fila en tu tabla
+  const nuevoProducto = await prisma.producto.create({
+    data: {
+      nombre: req.body.nombre,
+      precio: req.body.precio
+    }
+  });
+  
   res.status(201).json(nuevoProducto);
 });
 
 
-// ACTUALIZAR un producto (PUT)
-app.put('/api/productos/:id', (req, res) => {
-  // 1. Capturamos el ID de la URL y lo convertimos a número
-  const id = parseInt(req.params.id);
-  
-  // 2. Buscamos el producto en nuestro array
-  const producto = productos.find(p => p.id === id);
-
-  // 3. Si no existe, devolvemos un error 404 (Not Found)
-  if (!producto) {
-    return res.status(404).json({ mensaje: 'Producto no encontrado' });
+// 3. ACTUALIZAR un producto (PUT)
+app.put('/api/productos/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    // update() busca por ID y actualiza los datos
+    const productoActualizado = await prisma.producto.update({
+      where: { id: id },
+      data: {
+        nombre: req.body.nombre,
+        precio: req.body.precio
+      }
+    });
+    
+    res.json(productoActualizado);
+  } catch (error) {
+    // Si Prisma no encuentra el ID, caemos aquí
+    res.status(404).json({ mensaje: 'Producto no encontrado en la base de datos' });
   }
-
-  // 4. Si existe, actualizamos sus datos con lo que nos llega en el body
-  producto.nombre = req.body.nombre || producto.nombre;
-  producto.precio = req.body.precio || producto.precio;
-
-  // 5. Devolvemos el producto actualizado
-  res.json(producto);
 });
 
-// BORRAR un producto (DELETE)
-app.delete('/api/productos/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const index = productos.findIndex(p => p.id === id);
-
-  if (index === -1) {
-    return res.status(404).json({ mensaje: 'Producto no encontrado' });
+// 4. BORRAR un producto (DELETE)
+app.delete('/api/productos/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    // delete() busca por ID y elimina la fila
+    await prisma.producto.delete({
+      where: { id: id }
+    });
+    
+    res.status(204).send();
+  } catch (error) {
+    res.status(404).json({ mensaje: 'Producto no encontrado en la base de datos' });
   }
-
-  // Eliminamos 1 elemento en la posición "index"
-  productos.splice(index, 1);
-  
-  // Devolvemos un código 204 (No Content) porque se ha borrado con éxito
-  res.status(204).send(); 
 });
+
+// (De momento dejamos el PUT y DELETE comentados o borrados, los haremos después)
 
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
