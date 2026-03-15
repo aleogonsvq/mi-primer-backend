@@ -37,6 +37,44 @@ app.post('/api/productos', (req, res) => {
   res.status(201).json(nuevoProducto);
 });
 
+
+// ACTUALIZAR un producto (PUT)
+app.put('/api/productos/:id', (req, res) => {
+  // 1. Capturamos el ID de la URL y lo convertimos a número
+  const id = parseInt(req.params.id);
+  
+  // 2. Buscamos el producto en nuestro array
+  const producto = productos.find(p => p.id === id);
+
+  // 3. Si no existe, devolvemos un error 404 (Not Found)
+  if (!producto) {
+    return res.status(404).json({ mensaje: 'Producto no encontrado' });
+  }
+
+  // 4. Si existe, actualizamos sus datos con lo que nos llega en el body
+  producto.nombre = req.body.nombre || producto.nombre;
+  producto.precio = req.body.precio || producto.precio;
+
+  // 5. Devolvemos el producto actualizado
+  res.json(producto);
+});
+
+// BORRAR un producto (DELETE)
+app.delete('/api/productos/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = productos.findIndex(p => p.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ mensaje: 'Producto no encontrado' });
+  }
+
+  // Eliminamos 1 elemento en la posición "index"
+  productos.splice(index, 1);
+  
+  // Devolvemos un código 204 (No Content) porque se ha borrado con éxito
+  res.status(204).send(); 
+});
+
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
